@@ -1,13 +1,13 @@
 import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
-import AppError from '../utils/AppError.js';
+import ApiError from '../utils/ApiError.js';
 
 export const authenticate = (req, _res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new AppError('Access token is required', 401);
+      throw new ApiError('Access token is required', 401);
     }
 
     const token = authHeader.split(' ')[1];
@@ -16,12 +16,12 @@ export const authenticate = (req, _res, next) => {
     req.userId = decoded.userId;
     next();
   } catch (error) {
-    if (error instanceof AppError) {
+    if (error instanceof ApiError) {
       return next(error);
     }
 
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return next(new AppError('Invalid or expired token', 401));
+      return next(new ApiError('Invalid or expired token', 401));
     }
 
     next(error);

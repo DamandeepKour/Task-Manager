@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
 import userRepository from '../repositories/user.repository.js';
-import AppError from '../utils/AppError.js';
+import ApiError from '../utils/ApiError.js';
 
 const SALT_ROUNDS = 10;
 
@@ -17,7 +17,7 @@ const authService = {
 
     const existingUser = userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
-      throw new AppError('Email already registered', 409);
+      throw new ApiError('Email already registered', 409);
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
@@ -36,12 +36,12 @@ const authService = {
     const user = userRepository.findByEmail(normalizedEmail);
 
     if (!user) {
-      throw new AppError('Invalid email or password', 401);
+      throw new ApiError('Invalid email or password', 401);
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new AppError('Invalid email or password', 401);
+      throw new ApiError('Invalid email or password', 401);
     }
 
     const token = jwt.sign({ userId: user.id }, env.jwtSecret, {
@@ -58,7 +58,7 @@ const authService = {
     const user = userRepository.findById(userId);
 
     if (!user) {
-      throw new AppError('User not found', 404);
+      throw new ApiError('User not found', 404);
     }
 
     return sanitizeUser(user);

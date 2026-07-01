@@ -1,53 +1,31 @@
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { body } from 'express-validator';
 
-const sendValidationError = (res, message) => {
-  res.status(400).json({
-    success: false,
-    message,
-    data: null,
-  });
-};
+export const registerValidation = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Name is required'),
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Valid email is required'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters'),
+];
 
-export const validateRegister = (req, res, next) => {
-  const { name, email, password } = req.body;
-
-  if (!name || !String(name).trim()) {
-    return sendValidationError(res, 'Name is required');
-  }
-
-  if (!email || !String(email).trim()) {
-    return sendValidationError(res, 'Email is required');
-  }
-
-  if (!EMAIL_REGEX.test(email)) {
-    return sendValidationError(res, 'Valid email is required');
-  }
-
-  if (!password) {
-    return sendValidationError(res, 'Password is required');
-  }
-
-  if (password.length < 8) {
-    return sendValidationError(res, 'Password must be at least 8 characters');
-  }
-
-  next();
-};
-
-export const validateLogin = (req, res, next) => {
-  const { email, password } = req.body;
-
-  if (!email || !String(email).trim()) {
-    return sendValidationError(res, 'Email is required');
-  }
-
-  if (!EMAIL_REGEX.test(email)) {
-    return sendValidationError(res, 'Valid email is required');
-  }
-
-  if (!password) {
-    return sendValidationError(res, 'Password is required');
-  }
-
-  next();
-};
+export const loginValidation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Valid email is required'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required'),
+];

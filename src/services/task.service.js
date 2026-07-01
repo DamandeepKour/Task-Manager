@@ -1,12 +1,12 @@
 import taskRepository from '../repositories/task.repository.js';
 import { TASK_PRIORITY, TASK_STATUS } from '../constants/task.constants.js';
-import AppError from '../utils/AppError.js';
+import ApiError from '../utils/ApiError.js';
 
 const parseTaskId = (id) => {
   const taskId = Number(id);
 
   if (!Number.isInteger(taskId) || taskId <= 0) {
-    throw new AppError('Invalid task id', 400);
+    throw new ApiError('Invalid task id', 400);
   }
 
   return taskId;
@@ -14,7 +14,7 @@ const parseTaskId = (id) => {
 
 const assertTaskOwnership = (task, userId) => {
   if (!task || task.createdBy !== userId) {
-    throw new AppError('Task not found', 404);
+    throw new ApiError('Task not found', 404);
   }
 };
 
