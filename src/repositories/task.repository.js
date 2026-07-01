@@ -50,6 +50,11 @@ const taskRepository = {
     tasks.splice(taskIndex, 1);
     return true;
   },
+
+  reset() {
+    tasks.length = 0;
+    idCounter = 1;
+  },
 };
 
 export default taskRepository;

@@ -22,6 +22,11 @@ const userRepository = {
   findById(id) {
     return users.find((user) => user.id === id) || null;
   },
+
+  reset() {
+    users.length = 0;
+    idCounter = 1;
+  },
 };
 
 export default userRepository;
