@@ -1,5 +1,12 @@
 import taskRepository from '../repositories/task.repository.js';
-import { TASK_PRIORITY, TASK_STATUS } from '../constants/task.constants.js';
+import {
+  TASK_PRIORITY,
+  TASK_STATUS,
+  TASK_STATUSES,
+  TASK_PRIORITIES,
+  TASK_SORT_FIELDS,
+  TASK_QUERY_DEFAULTS,
+} from '../constants/task.constants.js';
 import ApiError from '../utils/ApiError.js';
 
 const parseTaskId = (id) => {
@@ -18,6 +25,28 @@ const assertTaskOwnership = (task, userId) => {
   }
 };
 
+const parsePositiveInt = (value, defaultValue) => {
+  const parsed = parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : defaultValue;
+};
+
+const parseTaskQueryParams = (query) => {
+  const page = parsePositiveInt(query.page, TASK_QUERY_DEFAULTS.PAGE);
+  const limit = parsePositiveInt(query.limit, TASK_QUERY_DEFAULTS.LIMIT);
+
+  const status = TASK_STATUSES.includes(query.status) ? query.status : undefined;
+  const priority = TASK_PRIORITIES.includes(query.priority) ? query.priority : undefined;
+  const search = query.search?.trim() || undefined;
+
+  const sortBy = TASK_SORT_FIELDS.includes(query.sortBy)
+    ? query.sortBy
+    : TASK_QUERY_DEFAULTS.SORT_BY;
+
+  const order = query.order?.toLowerCase() === 'asc' ? 'asc' : TASK_QUERY_DEFAULTS.ORDER;
+
+  return { page, limit, status, priority, search, sortBy, order };
+};
+
 const taskService = {
   createTask(userId, { title, description, status, priority, dueDate }) {
     return taskRepository.create({
@@ -30,8 +59,9 @@ const taskService = {
     });
   },
 
-  getTasks(userId) {
-    return taskRepository.findByUserId(userId);
+  getTasks(userId, query = {}) {
+    const filters = parseTaskQueryParams(query);
+    return taskRepository.findByUserIdWithFilters(userId, filters);
   },
 
   getTaskById(userId, id) {

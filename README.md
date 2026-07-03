@@ -85,7 +85,7 @@ Interactive Swagger documentation is available at:
 | POST | `/api/auth/login` | No | Login and receive JWT |
 | GET | `/api/users/profile` | Yes | Get logged-in user profile |
 | POST | `/api/tasks` | Yes | Create a new task |
-| GET | `/api/tasks` | Yes | Get all user tasks |
+| GET | `/api/tasks` | Yes | Get user tasks (paginated, filterable, searchable) |
 | GET | `/api/tasks/:id` | Yes | Get task by ID |
 | PUT | `/api/tasks/:id` | Yes | Update task by ID |
 | DELETE | `/api/tasks/:id` | Yes | Delete task by ID |
@@ -118,6 +118,74 @@ Protected endpoints require a Bearer token in the `Authorization` header:
 
 ```
 Authorization: Bearer <your-jwt-token>
+```
+
+### Task Listing (GET /api/tasks)
+
+Supports pagination, filtering, search, and sorting via query parameters.
+
+**Query parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | `1` | Page number |
+| `limit` | integer | `10` | Items per page |
+| `status` | string | — | Filter by status (`Todo`, `In Progress`, `Completed`) |
+| `priority` | string | — | Filter by priority (`Low`, `Medium`, `High`) |
+| `search` | string | — | Search in title and description |
+| `sortBy` | string | `createdAt` | Sort field (`createdAt`, `updatedAt`, `title`, `status`, `priority`, `dueDate`) |
+| `order` | string | `desc` | Sort order (`asc`, `desc`) |
+
+Invalid filter values are ignored safely.
+
+**Examples:**
+
+```bash
+# Default pagination (page 1, limit 10, sorted by createdAt desc)
+GET /api/tasks
+
+# Pagination
+GET /api/tasks?page=2&limit=5
+
+# Filter by status and priority
+GET /api/tasks?status=Todo&priority=High
+
+# Search by title or description
+GET /api/tasks?search=project
+
+# Sort by title ascending
+GET /api/tasks?sortBy=title&order=asc
+
+# Combined
+GET /api/tasks?status=In Progress&search=report&sortBy=dueDate&order=asc&page=1&limit=10
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Tasks fetched successfully",
+  "data": [
+    {
+      "id": 1,
+      "title": "Complete project",
+      "description": "Finish API documentation",
+      "status": "Todo",
+      "priority": "High",
+      "dueDate": "2026-12-31T00:00:00.000Z",
+      "createdBy": 1,
+      "createdAt": "2026-07-01T10:00:00.000Z",
+      "updatedAt": "2026-07-01T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 45,
+    "totalPages": 5
+  }
+}
 ```
 
 ## Environment Variables
@@ -163,7 +231,6 @@ Request → Route → Middleware → Controller → Service → Repository
 ## Future Improvements
 
 - MySQL (or PostgreSQL) database integration
-- Pagination and filtering for task lists
 - Refresh token support
 - Password reset / forgot password flow
 - Rate limiting and request throttling

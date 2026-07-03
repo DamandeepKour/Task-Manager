@@ -60,26 +60,102 @@ describe('Tasks API', () => {
   });
 
   describe('GET /api/tasks', () => {
-    it('should return all tasks for the authenticated user', async () => {
+    beforeEach(async () => {
       await request(app)
         .post('/api/tasks')
         .set('Authorization', `Bearer ${token}`)
-        .send({ title: 'Task One' });
+        .send({ title: 'Alpha Task', description: 'First task', status: 'Todo', priority: 'High' });
 
       await request(app)
         .post('/api/tasks')
         .set('Authorization', `Bearer ${token}`)
-        .send({ title: 'Task Two' });
+        .send({ title: 'Beta Task', description: 'Second task', status: 'Completed', priority: 'Low' });
 
+      await request(app)
+        .post('/api/tasks')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title: 'Gamma Report', description: 'Third task', status: 'In Progress', priority: 'Medium' });
+    });
+
+    it('should return paginated tasks with defaults', async () => {
       const response = await request(app)
         .get('/api/tasks')
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.message).toBe('Tasks retrieved successfully');
+      expect(response.body.message).toBe('Tasks fetched successfully');
+      expect(response.body.data).toHaveLength(3);
+      expect(response.body.pagination).toEqual({
+        page: 1,
+        limit: 10,
+        total: 3,
+        totalPages: 1,
+      });
+    });
+
+    it('should paginate results', async () => {
+      const response = await request(app)
+        .get('/api/tasks?page=1&limit=2')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
       expect(response.body.data).toHaveLength(2);
-      expect(response.body.data[0].title).toBeDefined();
+      expect(response.body.pagination).toEqual({
+        page: 1,
+        limit: 2,
+        total: 3,
+        totalPages: 2,
+      });
+    });
+
+    it('should filter by status', async () => {
+      const response = await request(app)
+        .get('/api/tasks?status=Completed')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].status).toBe('Completed');
+    });
+
+    it('should filter by priority', async () => {
+      const response = await request(app)
+        .get('/api/tasks?priority=High')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].priority).toBe('High');
+    });
+
+    it('should search by title and description', async () => {
+      const response = await request(app)
+        .get('/api/tasks?search=report')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].title).toBe('Gamma Report');
+    });
+
+    it('should sort by title ascending', async () => {
+      const response = await request(app)
+        .get('/api/tasks?sortBy=title&order=asc')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data[0].title).toBe('Alpha Task');
+      expect(response.body.data[2].title).toBe('Gamma Report');
+    });
+
+    it('should ignore invalid filters safely', async () => {
+      const response = await request(app)
+        .get('/api/tasks?status=Invalid&priority=Unknown&sortBy=invalidField')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(3);
     });
 
     it('should return 401 without authentication', async () => {

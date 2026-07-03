@@ -1,6 +1,6 @@
 import taskService from '../services/task.service.js';
 import asyncHandler from '../utils/asyncHandler.js';
-import { sendSuccess } from '../utils/response.util.js';
+import { sendSuccess, sendPaginatedSuccess } from '../utils/response.util.js';
 
 export const createTask = asyncHandler(async (req, res) => {
   const task = taskService.createTask(req.userId, req.body);
@@ -8,8 +8,8 @@ export const createTask = asyncHandler(async (req, res) => {
 });
 
 export const getTasks = asyncHandler(async (req, res) => {
-  const tasks = taskService.getTasks(req.userId);
-  sendSuccess(res, 200, 'Tasks retrieved successfully', tasks);
+  const { data, pagination } = taskService.getTasks(req.userId, req.query);
+  sendPaginatedSuccess(res, 200, 'Tasks fetched successfully', data, pagination);
 });
 
 export const getTaskById = asyncHandler(async (req, res) => {

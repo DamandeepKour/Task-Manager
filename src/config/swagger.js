@@ -139,6 +139,27 @@ const options = {
             dueDate: { type: 'string', format: 'date-time', nullable: true },
           },
         },
+        Pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'integer', example: 1 },
+            limit: { type: 'integer', example: 10 },
+            total: { type: 'integer', example: 45 },
+            totalPages: { type: 'integer', example: 5 },
+          },
+        },
+        PaginatedTasksResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Tasks fetched successfully' },
+            data: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/Task' },
+            },
+            pagination: { $ref: '#/components/schemas/Pagination' },
+          },
+        },
       },
     },
   },

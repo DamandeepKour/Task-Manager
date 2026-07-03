@@ -12,3 +12,19 @@ export const TASK_PRIORITY = {
 
 export const TASK_STATUSES = Object.values(TASK_STATUS);
 export const TASK_PRIORITIES = Object.values(TASK_PRIORITY);
+
+export const TASK_SORT_FIELDS = [
+  'createdAt',
+  'updatedAt',
+  'title',
+  'status',
+  'priority',
+  'dueDate',
+];
+
+export const TASK_QUERY_DEFAULTS = {
+  PAGE: 1,
+  LIMIT: 10,
+  SORT_BY: 'createdAt',
+  ORDER: 'desc',
+};
