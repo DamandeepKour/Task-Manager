@@ -1,7 +1,53 @@
+import { TASK_DATE_SORT_FIELDS } from '../constants/task.constants.js';
+
 const tasks = [];
 let idCounter = 1;
 
 const isActive = (task) => !task.deletedAt;
+
+const matchesFilters = (task, userId, filters) => {
+  if (task.createdBy !== userId || !isActive(task)) {
+    return false;
+  }
+
+  if (filters.status && task.status !== filters.status) {
+    return false;
+  }
+
+  if (filters.priority && task.priority !== filters.priority) {
+    return false;
+  }
+
+  if (filters.search) {
+    const term = filters.search.toLowerCase();
+    const inTitle = task.title.toLowerCase().includes(term);
+    const inDescription = task.description.toLowerCase().includes(term);
+
+    if (!inTitle && !inDescription) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+const compareTasks = (a, b, sortBy, order) => {
+  const aVal = a[sortBy] ?? '';
+  const bVal = b[sortBy] ?? '';
+
+  let comparison = 0;
+
+  if (TASK_DATE_SORT_FIELDS.includes(sortBy)) {
+    comparison = new Date(aVal || 0) - new Date(bVal || 0);
+  } else {
+    comparison = String(aVal).localeCompare(String(bVal));
+  }
+
+  return order === 'asc' ? comparison : -comparison;
+};
+
+const findActiveTaskIndex = (id) =>
+  tasks.findIndex((task) => task.id === id && isActive(task));
 
 const taskRepository = {
   create(taskData) {
@@ -21,57 +67,27 @@ const taskRepository = {
   },
 
   findById(id) {
-    return tasks.find((task) => task.id === id && isActive(task)) || null;
+    const task = tasks.find((taskItem) => taskItem.id === id && isActive(taskItem));
+    return task || null;
   },
 
   findByUserId(userId) {
-    return tasks.filter((task) => task.createdBy === userId && isActive(task));
+    return tasks.filter((task) => matchesFilters(task, userId, {}));
   },
 
   findByUserIdWithFilters(userId, filters) {
-    const { status, priority, search, sortBy, order, page, limit } = filters;
+    const { sortBy, order, page, limit } = filters;
 
-    let result = tasks.filter((task) => task.createdBy === userId && isActive(task));
-
-    if (status) {
-      result = result.filter((task) => task.status === status);
-    }
-
-    if (priority) {
-      result = result.filter((task) => task.priority === priority);
-    }
-
-    if (search) {
-      const term = search.toLowerCase();
-      result = result.filter(
-        (task) =>
-          task.title.toLowerCase().includes(term) ||
-          task.description.toLowerCase().includes(term),
-      );
-    }
-
-    result.sort((a, b) => {
-      const aVal = a[sortBy] ?? '';
-      const bVal = b[sortBy] ?? '';
-
-      let comparison = 0;
-
-      if (sortBy === 'createdAt' || sortBy === 'updatedAt' || sortBy === 'dueDate') {
-        comparison = new Date(aVal || 0) - new Date(bVal || 0);
-      } else {
-        comparison = String(aVal).localeCompare(String(bVal));
-      }
-
-      return order === 'asc' ? comparison : -comparison;
-    });
+    const result = tasks
+      .filter((task) => matchesFilters(task, userId, filters))
+      .sort((a, b) => compareTasks(a, b, sortBy, order));
 
     const total = result.length;
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
     const offset = (page - 1) * limit;
-    const data = result.slice(offset, offset + limit);
 
     return {
-      data,
+      data: result.slice(offset, offset + limit),
       pagination: {
         page,
         limit,
@@ -82,7 +98,7 @@ const taskRepository = {
   },
 
   update(id, updates) {
-    const taskIndex = tasks.findIndex((task) => task.id === id && isActive(task));
+    const taskIndex = findActiveTaskIndex(id);
 
     if (taskIndex === -1) {
       return null;
@@ -99,7 +115,7 @@ const taskRepository = {
   },
 
   softDelete(id, auditFields) {
-    const taskIndex = tasks.findIndex((task) => task.id === id && isActive(task));
+    const taskIndex = findActiveTaskIndex(id);
 
     if (taskIndex === -1) {
       return null;

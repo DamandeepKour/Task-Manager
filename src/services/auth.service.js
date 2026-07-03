@@ -3,13 +3,8 @@ import jwt from 'jsonwebtoken';
 import env from '../config/env.js';
 import userRepository from '../repositories/user.repository.js';
 import ApiError from '../utils/ApiError.js';
-
-const SALT_ROUNDS = 10;
-
-const sanitizeUser = (user) => {
-  const { password: _password, ...safeUser } = user;
-  return safeUser;
-};
+import { sanitizeUser } from '../utils/user.util.js';
+import { AUTH_SALT_ROUNDS } from '../constants/auth.constants.js';
 
 const authService = {
   async register({ name, email, password }) {
@@ -20,7 +15,7 @@ const authService = {
       throw new ApiError('Email already registered', 409);
     }
 
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    const hashedPassword = await bcrypt.hash(password, AUTH_SALT_ROUNDS);
 
     const user = userRepository.create({
       name: name.trim(),

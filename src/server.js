@@ -1,6 +1,7 @@
 import app from './app.js';
 import env from './config/env.js';
 import logger from './config/logger.js';
+import { initRedis, disconnectRedis } from './config/redis.js';
 
 const { port, nodeEnv } = env;
 
@@ -19,6 +20,23 @@ process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled Promise Rejection', { message, stack });
 });
 
-app.listen(port, () => {
-  logger.info('Application started', { port, environment: nodeEnv });
-});
+const startServer = async () => {
+  await initRedis();
+
+  const server = app.listen(port, () => {
+    logger.info('Application started', { port, environment: nodeEnv });
+  });
+
+  const shutdown = async (signal) => {
+    logger.info(`${signal} received — shutting down gracefully`);
+    server.close(async () => {
+      await disconnectRedis();
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+};
+
+startServer();

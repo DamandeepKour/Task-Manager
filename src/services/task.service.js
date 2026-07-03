@@ -1,55 +1,16 @@
 import taskRepository from '../repositories/task.repository.js';
+import cacheService from './cache.service.js';
+import { TASK_PRIORITY, TASK_STATUS } from '../constants/task.constants.js';
+import { parseTaskQueryParams } from '../utils/taskQuery.util.js';
 import {
-  TASK_PRIORITY,
-  TASK_STATUS,
-  TASK_STATUSES,
-  TASK_PRIORITIES,
-  TASK_SORT_FIELDS,
-  TASK_QUERY_DEFAULTS,
-} from '../constants/task.constants.js';
-import ApiError from '../utils/ApiError.js';
-
-const parseTaskId = (id) => {
-  const taskId = Number(id);
-
-  if (!Number.isInteger(taskId) || taskId <= 0) {
-    throw new ApiError('Invalid task id', 400);
-  }
-
-  return taskId;
-};
-
-const assertTaskOwnership = (task, userId) => {
-  if (!task || task.createdBy !== userId) {
-    throw new ApiError('Task not found', 404);
-  }
-};
-
-const parsePositiveInt = (value, defaultValue) => {
-  const parsed = parseInt(value, 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : defaultValue;
-};
-
-const parseTaskQueryParams = (query) => {
-  const page = parsePositiveInt(query.page, TASK_QUERY_DEFAULTS.PAGE);
-  const limit = parsePositiveInt(query.limit, TASK_QUERY_DEFAULTS.LIMIT);
-
-  const status = TASK_STATUSES.includes(query.status) ? query.status : undefined;
-  const priority = TASK_PRIORITIES.includes(query.priority) ? query.priority : undefined;
-  const search = query.search?.trim() || undefined;
-
-  const sortBy = TASK_SORT_FIELDS.includes(query.sortBy)
-    ? query.sortBy
-    : TASK_QUERY_DEFAULTS.SORT_BY;
-
-  const order = query.order?.toLowerCase() === 'asc' ? 'asc' : TASK_QUERY_DEFAULTS.ORDER;
-
-  return { page, limit, status, priority, search, sortBy, order };
-};
+  parseTaskId,
+  assertTaskOwnership,
+  buildTaskUpdateFields,
+} from '../utils/task.util.js';
 
 const taskService = {
-  createTask(userId, { title, description, status, priority, dueDate }) {
-    return taskRepository.create({
+  async createTask(userId, { title, description, status, priority, dueDate }) {
+    const task = taskRepository.create({
       title: title.trim(),
       description: description?.trim() || '',
       status: status || TASK_STATUS.TODO,
@@ -58,59 +19,67 @@ const taskService = {
       createdBy: userId,
       updatedBy: userId,
     });
-  },
 
-  getTasks(userId, query = {}) {
-    const filters = parseTaskQueryParams(query);
-    return taskRepository.findByUserIdWithFilters(userId, filters);
-  },
-
-  getTaskById(userId, id) {
-    const taskId = parseTaskId(id);
-    const task = taskRepository.findById(taskId);
-    assertTaskOwnership(task, userId);
+    await cacheService.invalidateUserTasks(userId);
     return task;
   },
 
-  updateTask(userId, id, updates) {
-    const taskId = parseTaskId(id);
-    const task = taskRepository.findById(taskId);
-    assertTaskOwnership(task, userId);
+  async getTasks(userId, query = {}) {
+    const filters = parseTaskQueryParams(query);
+    const cacheKey = cacheService.buildTaskListCacheKey(userId, filters);
 
-    const updatedFields = { updatedBy: userId };
-
-    if (updates.title !== undefined) {
-      updatedFields.title = updates.title.trim();
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
     }
 
-    if (updates.description !== undefined) {
-      updatedFields.description = updates.description.trim();
-    }
-
-    if (updates.status !== undefined) {
-      updatedFields.status = updates.status;
-    }
-
-    if (updates.priority !== undefined) {
-      updatedFields.priority = updates.priority;
-    }
-
-    if (updates.dueDate !== undefined) {
-      updatedFields.dueDate = updates.dueDate;
-    }
-
-    return taskRepository.update(taskId, updatedFields);
+    const result = taskRepository.findByUserIdWithFilters(userId, filters);
+    await cacheService.set(cacheKey, result);
+    return result;
   },
 
-  softDeleteTask(userId, id) {
+  async getTaskById(userId, id) {
+    const taskId = parseTaskId(id);
+    const cacheKey = cacheService.buildTaskDetailCacheKey(userId, taskId);
+
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const task = taskRepository.findById(taskId);
+    assertTaskOwnership(task, userId);
+
+    await cacheService.set(cacheKey, task);
+    return task;
+  },
+
+  async updateTask(userId, id, updates) {
     const taskId = parseTaskId(id);
     const task = taskRepository.findById(taskId);
     assertTaskOwnership(task, userId);
 
-    return taskRepository.softDelete(taskId, {
+    const updatedTask = taskRepository.update(
+      taskId,
+      buildTaskUpdateFields(userId, updates),
+    );
+
+    await cacheService.invalidateUserTasks(userId, taskId);
+    return updatedTask;
+  },
+
+  async softDeleteTask(userId, id) {
+    const taskId = parseTaskId(id);
+    const task = taskRepository.findById(taskId);
+    assertTaskOwnership(task, userId);
+
+    const deletedTask = taskRepository.softDelete(taskId, {
       deletedBy: userId,
       updatedBy: userId,
     });
+
+    await cacheService.invalidateUserTasks(userId, taskId);
+    return deletedTask;
   },
 };
 

@@ -14,6 +14,7 @@ The Task Manager API provides user authentication and full CRUD operations for p
 - Production security (Helmet, rate limiting, CORS, password strength)
 - Winston structured logging with file rotation
 - Task soft delete with audit fields
+- Redis caching for task read endpoints (optional, graceful fallback)
 - Consistent API response format
 - Swagger API documentation
 - Unit and integration tests with Jest and Supertest
@@ -26,7 +27,7 @@ The Task Manager API provides user authentication and full CRUD operations for p
 api-aggregation/
 ├── src/
 │   ├── config/           # Environment, security, Swagger configuration
-│   ├── constants/        # Application constants (task status, priority)
+│   ├── constants/        # Centralized constants (tasks, cache, auth, messages)
 │   ├── controllers/      # Request handlers
 │   ├── middlewares/      # Auth, validation, and error middleware
 │   ├── repositories/     # In-memory data access layer
@@ -109,7 +110,7 @@ The following are planned for future releases and are **not** available:
 | `DELETE /api/tasks/:id` (hard delete) | Replaced by soft delete (`PATCH /api/tasks/:id/delete`) |
 | Refresh token | Not implemented |
 | Forgot / reset password | Not implemented |
-| Redis caching | Not implemented |
+| Redis caching | Not implemented (read-cache implemented; sessions not cached) |
 
 ### Response Format
 
@@ -219,6 +220,10 @@ GET /api/tasks?status=In Progress&search=report&sortBy=dueDate&order=asc&page=1&
 | `JWT_EXPIRES_IN` | No | JWT token expiration | `1d` |
 | `CORS_ORIGIN` | No | Allowed origins (comma-separated or `*`) | `*` |
 | `CORS_CREDENTIALS` | No | Allow credentials in CORS requests | `false` |
+| `REDIS_ENABLED` | No | Enable Redis caching | `false` |
+| `REDIS_URL` | No | Redis connection URL | `redis://localhost:6379` |
+| `REDIS_TTL` | No | Cache TTL in seconds | `300` |
+| `REDIS_PORT` | Docker only | Redis host port mapping | `6379` |
 | `MYSQL_ROOT_PASSWORD` | Docker only | MySQL root password | `rootpassword` |
 | `MYSQL_DATABASE` | Docker only | MySQL database name | `task_manager` |
 | `MYSQL_USER` | Docker only | MySQL application user | `taskuser` |
@@ -236,6 +241,11 @@ JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=1d
 CORS_ORIGIN=http://localhost:3000
 CORS_CREDENTIALS=false
+
+# Redis (optional — app continues normally if unavailable)
+REDIS_ENABLED=false
+REDIS_URL=redis://localhost:6379
+REDIS_TTL=300
 
 # Docker / MySQL (infrastructure — persistence not wired yet)
 MYSQL_ROOT_PASSWORD=rootpassword
@@ -289,12 +299,14 @@ The project includes a multi-stage **Dockerfile** and **docker-compose.yml** wit
 |---------|-----------|------|-------------|
 | `app` | `task-manager-api` | `3000` | Node.js Express API |
 | `mysql` | `task-manager-mysql` | `3306` | MySQL 8 database |
+| `redis` | `task-manager-redis` | `6379` | Redis 7 cache |
 
 ### Volumes
 
 | Volume | Purpose |
 |--------|---------|
 | `mysql-data` | Persistent MySQL data |
+| `redis-data` | Persistent Redis data |
 | `app-logs` | Application log files |
 
 ### Health Checks
@@ -385,6 +397,31 @@ The application uses **Winston** for structured logging. Log files are written t
 
 Logs are disabled during test runs (`NODE_ENV=test`).
 
+## Redis Caching
+
+Optional Redis caching improves performance for task read endpoints. If Redis is unavailable, the application **continues working normally** without cache.
+
+| Endpoint | Cached | TTL |
+|----------|--------|-----|
+| `GET /api/tasks` | Yes | 300s |
+| `GET /api/tasks/:id` | Yes | 300s |
+
+**Cache invalidation** occurs on:
+
+- Create task
+- Update task
+- Soft delete task
+
+Enable locally:
+
+```env
+REDIS_ENABLED=true
+REDIS_URL=redis://localhost:6379
+REDIS_TTL=300
+```
+
+With Docker Compose, Redis is enabled by default (`REDIS_ENABLED=true`).
+
 ## Soft Delete (Tasks)
 
 Tasks are never permanently removed. Instead, `PATCH /api/tasks/:id/delete` performs a soft delete:
@@ -433,8 +470,8 @@ Request → Route → Middleware → Controller → Service → Repository
 
 - **Routes** — Define endpoints and apply middleware
 - **Controllers** — Handle HTTP requests and format responses
-- **Services** — Business logic and authorization rules
-- **Repositories** — Data persistence (in-memory for now)
+- **Services** — Business logic, caching, and authorization rules
+- **Repositories** — Data access only (in-memory store)
 - **Middlewares** — Authentication, validation, error handling
 
 ## Future Improvements
@@ -442,7 +479,6 @@ Request → Route → Middleware → Controller → Service → Repository
 - MySQL database integration (wire repositories to Docker MySQL)
 - Refresh token support
 - Password reset / forgot password flow
-- Redis caching for sessions
 
 ## License
 

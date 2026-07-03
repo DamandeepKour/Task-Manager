@@ -57,6 +57,7 @@ router.use(authenticate);
  *     tags:
  *       - Tasks
  *     summary: Get tasks with pagination, filtering, search, and sorting
+ *     description: Results may be served from Redis cache (TTL 300s). Cache is invalidated on create, update, or soft delete.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -166,6 +167,7 @@ router.patch('/:id/delete', softDeleteTask);
  *     tags:
  *       - Tasks
  *     summary: Get a task by ID
+ *     description: Result may be served from Redis cache (TTL 300s). Cache is invalidated on update or soft delete.
  *     security:
  *       - bearerAuth: []
  *     parameters:

@@ -28,3 +28,7 @@ export const TASK_QUERY_DEFAULTS = {
   SORT_BY: 'createdAt',
   ORDER: 'desc',
 };
+
+export const TASK_DATE_SORT_FIELDS = ['createdAt', 'updatedAt', 'dueDate'];
+
+export const SORT_ORDERS = ['asc', 'desc'];

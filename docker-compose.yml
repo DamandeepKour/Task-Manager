@@ -19,10 +19,15 @@ services:
       DB_NAME: ${MYSQL_DATABASE:-task_manager}
       DB_USER: ${MYSQL_USER:-taskuser}
       DB_PASSWORD: ${MYSQL_PASSWORD:-taskpassword}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      REDIS_TTL: ${REDIS_TTL:-300}
     volumes:
       - app-logs:/app/logs
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -61,10 +66,29 @@ services:
     networks:
       - task-manager-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: task-manager-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - task-manager-network
+
 volumes:
   mysql-data:
     driver: local
   app-logs:
+    driver: local
+  redis-data:
     driver: local
 
 networks:
