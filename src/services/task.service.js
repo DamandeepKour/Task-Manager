@@ -56,6 +56,7 @@ const taskService = {
       priority: priority || TASK_PRIORITY.MEDIUM,
       dueDate: dueDate || null,
       createdBy: userId,
+      updatedBy: userId,
     });
   },
 
@@ -76,7 +77,7 @@ const taskService = {
     const task = taskRepository.findById(taskId);
     assertTaskOwnership(task, userId);
 
-    const updatedFields = {};
+    const updatedFields = { updatedBy: userId };
 
     if (updates.title !== undefined) {
       updatedFields.title = updates.title.trim();
@@ -101,12 +102,15 @@ const taskService = {
     return taskRepository.update(taskId, updatedFields);
   },
 
-  deleteTask(userId, id) {
+  softDeleteTask(userId, id) {
     const taskId = parseTaskId(id);
     const task = taskRepository.findById(taskId);
     assertTaskOwnership(task, userId);
 
-    taskRepository.delete(taskId);
+    return taskRepository.softDelete(taskId, {
+      deletedBy: userId,
+      updatedBy: userId,
+    });
   },
 };
 

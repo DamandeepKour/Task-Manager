@@ -1,14 +1,19 @@
 const tasks = [];
 let idCounter = 1;
 
+const isActive = (task) => !task.deletedAt;
+
 const taskRepository = {
   create(taskData) {
     const now = new Date().toISOString();
     const task = {
       id: idCounter++,
       ...taskData,
+      deletedAt: null,
+      deletedBy: null,
       createdAt: now,
       updatedAt: now,
+      updatedBy: taskData.updatedBy ?? taskData.createdBy,
     };
 
     tasks.push(task);
@@ -16,17 +21,17 @@ const taskRepository = {
   },
 
   findById(id) {
-    return tasks.find((task) => task.id === id) || null;
+    return tasks.find((task) => task.id === id && isActive(task)) || null;
   },
 
   findByUserId(userId) {
-    return tasks.filter((task) => task.createdBy === userId);
+    return tasks.filter((task) => task.createdBy === userId && isActive(task));
   },
 
   findByUserIdWithFilters(userId, filters) {
     const { status, priority, search, sortBy, order, page, limit } = filters;
 
-    let result = tasks.filter((task) => task.createdBy === userId);
+    let result = tasks.filter((task) => task.createdBy === userId && isActive(task));
 
     if (status) {
       result = result.filter((task) => task.status === status);
@@ -77,7 +82,7 @@ const taskRepository = {
   },
 
   update(id, updates) {
-    const taskIndex = tasks.findIndex((task) => task.id === id);
+    const taskIndex = tasks.findIndex((task) => task.id === id && isActive(task));
 
     if (taskIndex === -1) {
       return null;
@@ -93,15 +98,24 @@ const taskRepository = {
     return updatedTask;
   },
 
-  delete(id) {
-    const taskIndex = tasks.findIndex((task) => task.id === id);
+  softDelete(id, auditFields) {
+    const taskIndex = tasks.findIndex((task) => task.id === id && isActive(task));
 
     if (taskIndex === -1) {
-      return false;
+      return null;
     }
 
-    tasks.splice(taskIndex, 1);
-    return true;
+    const now = new Date().toISOString();
+    const deletedTask = {
+      ...tasks[taskIndex],
+      deletedAt: now,
+      deletedBy: auditFields.deletedBy,
+      updatedAt: now,
+      updatedBy: auditFields.updatedBy,
+    };
+
+    tasks[taskIndex] = deletedTask;
+    return deletedTask;
   },
 
   reset() {

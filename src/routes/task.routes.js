@@ -4,7 +4,7 @@ import {
   getTasks,
   getTaskById,
   updateTask,
-  deleteTask,
+  softDeleteTask,
 } from '../controllers/task.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
@@ -122,6 +122,45 @@ router.get('/', getTasks);
 
 /**
  * @openapi
+ * /api/tasks/{id}/delete:
+ *   patch:
+ *     tags:
+ *       - Tasks
+ *     summary: Soft delete a task by ID
+ *     description: Marks the task as deleted by setting deletedAt and deletedBy. The record is not permanently removed.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Task ID
+ *     responses:
+ *       200:
+ *         description: Task deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Task not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.patch('/:id/delete', softDeleteTask);
+
+/**
+ * @openapi
  * /api/tasks/{id}:
  *   get:
  *     tags:
@@ -209,41 +248,8 @@ router.get('/', getTasks);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *   delete:
- *     tags:
- *       - Tasks
- *     summary: Delete a task by ID
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: Task ID
- *     responses:
- *       200:
- *         description: Task deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       404:
- *         description: Task not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/:id', getTaskById);
 router.put('/:id', updateTaskValidation, validate, updateTask);
-router.delete('/:id', deleteTask);
 
 export default router;

@@ -108,6 +108,9 @@ const options = {
             createdBy: { type: 'integer', example: 1 },
             createdAt: { type: 'string', format: 'date-time' },
             updatedAt: { type: 'string', format: 'date-time' },
+            updatedBy: { type: 'integer', example: 1, nullable: true },
+            deletedAt: { type: 'string', format: 'date-time', nullable: true },
+            deletedBy: { type: 'integer', example: null, nullable: true },
           },
         },
         CreateTaskRequest: {

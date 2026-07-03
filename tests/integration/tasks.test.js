@@ -165,4 +165,62 @@ describe('Tasks API', () => {
       expect(response.body.success).toBe(false);
     });
   });
+
+  describe('PATCH /api/tasks/:id/delete', () => {
+    let taskId;
+
+    beforeEach(async () => {
+      const createRes = await request(app)
+        .post('/api/tasks')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title: 'Task to delete' });
+
+      taskId = createRes.body.data.id;
+    });
+
+    it('should soft delete a task successfully', async () => {
+      const response = await request(app)
+        .patch(`/api/tasks/${taskId}/delete`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Task deleted successfully');
+    });
+
+    it('should exclude soft deleted tasks from GET /api/tasks', async () => {
+      await request(app)
+        .patch(`/api/tasks/${taskId}/delete`)
+        .set('Authorization', `Bearer ${token}`);
+
+      const response = await request(app)
+        .get('/api/tasks')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveLength(0);
+      expect(response.body.pagination.total).toBe(0);
+    });
+
+    it('should return 404 for soft deleted task by ID', async () => {
+      await request(app)
+        .patch(`/api/tasks/${taskId}/delete`)
+        .set('Authorization', `Bearer ${token}`);
+
+      const response = await request(app)
+        .get(`/api/tasks/${taskId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('Task not found');
+    });
+
+    it('should return 401 without authentication', async () => {
+      const response = await request(app).patch(`/api/tasks/${taskId}/delete`);
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+  });
 });

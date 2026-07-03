@@ -22,7 +22,7 @@ export const updateTask = asyncHandler(async (req, res) => {
   sendSuccess(res, 200, 'Task updated successfully', task);
 });
 
-export const deleteTask = asyncHandler(async (req, res) => {
-  taskService.deleteTask(req.userId, req.params.id);
+export const softDeleteTask = asyncHandler(async (req, res) => {
+  taskService.softDeleteTask(req.userId, req.params.id);
   sendSuccess(res, 200, 'Task deleted successfully');
 });

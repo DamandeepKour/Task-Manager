@@ -96,4 +96,45 @@ describe('Task Repository - findByUserIdWithFilters', () => {
       totalPages: 2,
     });
   });
+
+  it('should exclude soft deleted tasks from queries', () => {
+    seedTasks();
+
+    const task = taskRepository.findByUserIdWithFilters(1, {
+      page: 1,
+      limit: 10,
+      sortBy: 'createdAt',
+      order: 'desc',
+    }).data[0];
+
+    taskRepository.softDelete(task.id, { deletedBy: 1, updatedBy: 1 });
+
+    const result = taskRepository.findByUserIdWithFilters(1, {
+      page: 1,
+      limit: 10,
+      sortBy: 'createdAt',
+      order: 'desc',
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.pagination.total).toBe(1);
+    expect(taskRepository.findById(task.id)).toBeNull();
+  });
+
+  it('should soft delete a task and set audit fields', () => {
+    seedTasks();
+
+    const task = taskRepository.findByUserIdWithFilters(1, {
+      page: 1,
+      limit: 10,
+      sortBy: 'createdAt',
+      order: 'desc',
+    }).data[0];
+
+    const deleted = taskRepository.softDelete(task.id, { deletedBy: 1, updatedBy: 1 });
+
+    expect(deleted.deletedAt).toBeDefined();
+    expect(deleted.deletedBy).toBe(1);
+    expect(deleted.updatedBy).toBe(1);
+  });
 });

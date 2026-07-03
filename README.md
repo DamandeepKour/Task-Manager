@@ -12,6 +12,8 @@ The Task Manager API provides user authentication and full CRUD operations for p
 - Task CRUD with status and priority management
 - Centralized validation using `express-validator`
 - Production security (Helmet, rate limiting, CORS, password strength)
+- Winston structured logging with file rotation
+- Task soft delete with audit fields
 - Consistent API response format
 - Swagger API documentation
 - Unit and integration tests with Jest and Supertest
@@ -89,7 +91,21 @@ Interactive Swagger documentation is available at:
 | GET | `/api/tasks` | Yes | Get user tasks (paginated, filterable, searchable) |
 | GET | `/api/tasks/:id` | Yes | Get task by ID |
 | PUT | `/api/tasks/:id` | Yes | Update task by ID |
-| DELETE | `/api/tasks/:id` | Yes | Delete task by ID |
+| PATCH | `/api/tasks/:id/delete` | Yes | Soft delete task by ID |
+
+### APIs Not Yet Implemented
+
+The following are planned for future releases and are **not** available:
+
+| Feature | Status |
+|---------|--------|
+| MySQL / database persistence | Not implemented (in-memory storage only) |
+| `DELETE /api/tasks/:id` (hard delete) | Replaced by soft delete (`PATCH /api/tasks/:id/delete`) |
+| Refresh token | Not implemented |
+| Forgot / reset password | Not implemented |
+| Docker / containerization | Not implemented |
+| Redis caching | Not implemented |
+| CI/CD pipeline | Not implemented |
 
 ### Response Format
 
@@ -236,6 +252,51 @@ The API applies production-oriented security controls:
 
 Example valid password: `Password1!`
 
+## Logging
+
+The application uses **Winston** for structured logging. Log files are written to the `logs/` directory:
+
+| File | Contents |
+|------|----------|
+| `access.log` | Incoming HTTP requests (method, URL, status, duration) |
+| `error.log` | Error-level events |
+| `combined.log` | All log levels combined |
+
+**Logged events:**
+
+- Application startup
+- Incoming HTTP requests
+- Client errors (4xx) as warnings
+- Server errors (5xx) and unhandled exceptions
+- Unhandled promise rejections
+
+Logs are disabled during test runs (`NODE_ENV=test`).
+
+## Soft Delete (Tasks)
+
+Tasks are never permanently removed. Instead, `PATCH /api/tasks/:id/delete` performs a soft delete:
+
+- Sets `deletedAt` and `deletedBy` timestamps
+- Updates `updatedAt` and `updatedBy` audit fields
+- Soft-deleted tasks are **excluded** from `GET /api/tasks`
+- `GET /api/tasks/:id` returns **404** for soft-deleted tasks
+
+**Task audit fields:**
+
+| Field | Description |
+|-------|-------------|
+| `createdBy` | User who created the task |
+| `updatedBy` | User who last modified the task |
+| `deletedAt` | Timestamp when task was soft deleted (`null` if active) |
+| `deletedBy` | User who soft deleted the task (`null` if active) |
+
+**Example:**
+
+```bash
+PATCH /api/tasks/1/delete
+Authorization: Bearer <token>
+```
+
 ## Available Scripts
 
 | Command | Description |
@@ -263,7 +324,6 @@ Request → Route → Middleware → Controller → Service → Repository
 - MySQL (or PostgreSQL) database integration
 - Refresh token support
 - Password reset / forgot password flow
-- Structured logging (Winston / Pino)
 - CI/CD pipeline with GitHub Actions
 - Docker containerization
 - Redis caching for sessions
