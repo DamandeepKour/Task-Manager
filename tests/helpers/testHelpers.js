@@ -1,5 +1,6 @@
 import userRepository from '../../src/repositories/user.repository.js';
 import taskRepository from '../../src/repositories/task.repository.js';
+import { TEST_PASSWORD } from './constants.js';
 
 export const resetStores = () => {
   userRepository.reset();
@@ -10,7 +11,7 @@ export const registerAndLogin = async (request, app, user = {}) => {
   const payload = {
     name: user.name || 'Test User',
     email: user.email || `user-${Date.now()}@example.com`,
-    password: user.password || 'password123',
+    password: user.password || TEST_PASSWORD,
   };
 
   await request(app).post('/api/auth/register').send(payload);

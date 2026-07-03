@@ -55,7 +55,13 @@ const options = {
           properties: {
             name: { type: 'string', example: 'John Doe' },
             email: { type: 'string', format: 'email', example: 'john@example.com' },
-            password: { type: 'string', minLength: 8, example: 'password123' },
+            password: {
+              type: 'string',
+              minLength: 8,
+              example: 'Password1!',
+              description:
+                'Minimum 8 characters with at least one uppercase, lowercase, number, and special character',
+            },
           },
         },
         LoginRequest: {
@@ -63,7 +69,7 @@ const options = {
           required: ['email', 'password'],
           properties: {
             email: { type: 'string', format: 'email', example: 'john@example.com' },
-            password: { type: 'string', example: 'password123' },
+            password: { type: 'string', example: 'Password1!' },
           },
         },
         User: {

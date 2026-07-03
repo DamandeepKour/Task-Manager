@@ -1,4 +1,5 @@
 import { body } from 'express-validator';
+import { PASSWORD_MIN_LENGTH } from '../utils/password.util.js';
 
 export const registerValidation = [
   body('name')
@@ -14,8 +15,16 @@ export const registerValidation = [
   body('password')
     .notEmpty()
     .withMessage('Password is required')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters'),
+    .isLength({ min: PASSWORD_MIN_LENGTH })
+    .withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/)
+    .withMessage('Password must contain at least one uppercase letter')
+    .matches(/[a-z]/)
+    .withMessage('Password must contain at least one lowercase letter')
+    .matches(/[0-9]/)
+    .withMessage('Password must contain at least one number')
+    .matches(/[^A-Za-z0-9]/)
+    .withMessage('Password must contain at least one special character'),
 ];
 
 export const loginValidation = [

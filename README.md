@@ -11,6 +11,7 @@ The Task Manager API provides user authentication and full CRUD operations for p
 - JWT-based authentication (register, login, profile)
 - Task CRUD with status and priority management
 - Centralized validation using `express-validator`
+- Production security (Helmet, rate limiting, CORS, password strength)
 - Consistent API response format
 - Swagger API documentation
 - Unit and integration tests with Jest and Supertest
@@ -20,7 +21,7 @@ The Task Manager API provides user authentication and full CRUD operations for p
 ```
 api-aggregation/
 ├── src/
-│   ├── config/           # Environment and Swagger configuration
+│   ├── config/           # Environment, security, Swagger configuration
 │   ├── constants/        # Application constants (task status, priority)
 │   ├── controllers/      # Request handlers
 │   ├── middlewares/      # Auth, validation, and error middleware
@@ -190,12 +191,16 @@ GET /api/tasks?status=In Progress&search=report&sortBy=dueDate&order=asc&page=1&
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NODE_ENV` | Application environment | `development` |
-| `PORT` | Server port | `3000` |
-| `JWT_SECRET` | Secret key for signing JWT tokens | — |
-| `JWT_EXPIRES_IN` | JWT token expiration | `1d` |
+| Variable | Required | Description | Default |
+|----------|----------|-------------|---------|
+| `NODE_ENV` | No | Application environment | `development` |
+| `PORT` | No | Server port | `3000` |
+| `JWT_SECRET` | **Yes** | Secret key for signing JWT tokens | — |
+| `JWT_EXPIRES_IN` | No | JWT token expiration | `1d` |
+| `CORS_ORIGIN` | No | Allowed origins (comma-separated or `*`) | `*` |
+| `CORS_CREDENTIALS` | No | Allow credentials in CORS requests | `false` |
+
+The server **will not start** if required environment variables are missing.
 
 Example `.env`:
 
@@ -204,7 +209,32 @@ NODE_ENV=development
 PORT=3000
 JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=1d
+CORS_ORIGIN=http://localhost:3000
+CORS_CREDENTIALS=false
 ```
+
+## Security
+
+The API applies production-oriented security controls:
+
+| Control | Description |
+|---------|-------------|
+| **Helmet** | Secure HTTP headers (CSP, HSTS, X-Frame-Options, nosniff, etc.) |
+| **Rate Limiting** | 100 requests per 15 minutes per IP (global) |
+| **CORS** | Configurable allowed origins via `CORS_ORIGIN` |
+| **Env Validation** | Startup fails if `JWT_SECRET` is missing |
+| **Password Strength** | Registration requires min 8 chars with uppercase, lowercase, number, and special character |
+| **JSON Body Limit** | Request body capped at 10kb |
+
+### Password Requirements (Registration)
+
+- Minimum 8 characters
+- At least one uppercase letter (`A-Z`)
+- At least one lowercase letter (`a-z`)
+- At least one number (`0-9`)
+- At least one special character (e.g. `!@#$%^&*`)
+
+Example valid password: `Password1!`
 
 ## Available Scripts
 
@@ -233,7 +263,6 @@ Request → Route → Middleware → Controller → Service → Repository
 - MySQL (or PostgreSQL) database integration
 - Refresh token support
 - Password reset / forgot password flow
-- Rate limiting and request throttling
 - Structured logging (Winston / Pino)
 - CI/CD pipeline with GitHub Actions
 - Docker containerization

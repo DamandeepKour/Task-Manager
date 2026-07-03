@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from '../../src/app.js';
 import { resetStores } from '../helpers/testHelpers.js';
+import { TEST_PASSWORD } from '../helpers/constants.js';
 
 describe('Auth API', () => {
   beforeEach(() => {
@@ -12,7 +13,7 @@ describe('Auth API', () => {
       const response = await request(app).post('/api/auth/register').send({
         name: 'John Doe',
         email: 'john@example.com',
-        password: 'password123',
+        password: TEST_PASSWORD,
       });
 
       expect(response.status).toBe(201);
@@ -40,11 +41,24 @@ describe('Auth API', () => {
       expect(response.body.errors.length).toBeGreaterThan(0);
     });
 
+    it('should return 400 for weak password', async () => {
+      const response = await request(app).post('/api/auth/register').send({
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'password123',
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toBe('Validation failed');
+      expect(response.body.errors.some((e) => e.field === 'password')).toBe(true);
+    });
+
     it('should return 409 for duplicate email', async () => {
       const user = {
         name: 'John Doe',
         email: 'john@example.com',
-        password: 'password123',
+        password: TEST_PASSWORD,
       };
 
       await request(app).post('/api/auth/register').send(user);
@@ -52,7 +66,7 @@ describe('Auth API', () => {
       const response = await request(app).post('/api/auth/register').send({
         name: 'Jane Doe',
         email: 'john@example.com',
-        password: 'password456',
+        password: 'Password2!',
       });
 
       expect(response.status).toBe(409);
@@ -66,14 +80,14 @@ describe('Auth API', () => {
       await request(app).post('/api/auth/register').send({
         name: 'John Doe',
         email: 'john@example.com',
-        password: 'password123',
+        password: TEST_PASSWORD,
       });
     });
 
     it('should login successfully with valid credentials', async () => {
       const response = await request(app).post('/api/auth/login').send({
         email: 'john@example.com',
-        password: 'password123',
+        password: TEST_PASSWORD,
       });
 
       expect(response.status).toBe(200);
