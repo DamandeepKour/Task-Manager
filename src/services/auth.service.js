@@ -7,7 +7,7 @@ import ApiError from '../utils/ApiError.js';
 const SALT_ROUNDS = 10;
 
 const sanitizeUser = (user) => {
-  const { password, ...safeUser } = user;
+  const { password: _password, ...safeUser } = user;
   return safeUser;
 };
 

@@ -17,6 +17,8 @@ The Task Manager API provides user authentication and full CRUD operations for p
 - Consistent API response format
 - Swagger API documentation
 - Unit and integration tests with Jest and Supertest
+- Docker containerization with MySQL
+- GitHub Actions CI/CD pipeline
 
 ## Folder Structure
 
@@ -40,6 +42,10 @@ api-aggregation/
 │   ├── helpers/          # Test utilities
 │   └── setup.js          # Jest test environment setup
 ├── jest.config.js
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
+├── .github/workflows/node.yml
 ├── package.json
 └── README.md
 ```
@@ -99,13 +105,11 @@ The following are planned for future releases and are **not** available:
 
 | Feature | Status |
 |---------|--------|
-| MySQL / database persistence | Not implemented (in-memory storage only) |
+| MySQL / database persistence | Not implemented (in-memory storage only; MySQL available in Docker for future use) |
 | `DELETE /api/tasks/:id` (hard delete) | Replaced by soft delete (`PATCH /api/tasks/:id/delete`) |
 | Refresh token | Not implemented |
 | Forgot / reset password | Not implemented |
-| Docker / containerization | Not implemented |
 | Redis caching | Not implemented |
-| CI/CD pipeline | Not implemented |
 
 ### Response Format
 
@@ -215,6 +219,11 @@ GET /api/tasks?status=In Progress&search=report&sortBy=dueDate&order=asc&page=1&
 | `JWT_EXPIRES_IN` | No | JWT token expiration | `1d` |
 | `CORS_ORIGIN` | No | Allowed origins (comma-separated or `*`) | `*` |
 | `CORS_CREDENTIALS` | No | Allow credentials in CORS requests | `false` |
+| `MYSQL_ROOT_PASSWORD` | Docker only | MySQL root password | `rootpassword` |
+| `MYSQL_DATABASE` | Docker only | MySQL database name | `task_manager` |
+| `MYSQL_USER` | Docker only | MySQL application user | `taskuser` |
+| `MYSQL_PASSWORD` | Docker only | MySQL application password | `taskpassword` |
+| `MYSQL_PORT` | Docker only | MySQL host port mapping | `3306` |
 
 The server **will not start** if required environment variables are missing.
 
@@ -227,7 +236,111 @@ JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=1d
 CORS_ORIGIN=http://localhost:3000
 CORS_CREDENTIALS=false
+
+# Docker / MySQL (infrastructure — persistence not wired yet)
+MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_DATABASE=task_manager
+MYSQL_USER=taskuser
+MYSQL_PASSWORD=taskpassword
+MYSQL_PORT=3306
 ```
+
+## Docker Setup
+
+The project includes a multi-stage **Dockerfile** and **docker-compose.yml** with the Node.js API and MySQL 8.
+
+**Prerequisites:** Docker and Docker Compose
+
+1. Copy environment file and set `JWT_SECRET`:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Start all containers:
+
+   ```bash
+   npm run docker:up
+   # or
+   docker compose up -d --build
+   ```
+
+3. Verify the API:
+
+   ```bash
+   curl http://localhost:3000/health
+   ```
+
+4. View logs:
+
+   ```bash
+   npm run docker:logs
+   ```
+
+5. Stop containers:
+
+   ```bash
+   npm run docker:down
+   ```
+
+### Docker Services
+
+| Service | Container | Port | Description |
+|---------|-----------|------|-------------|
+| `app` | `task-manager-api` | `3000` | Node.js Express API |
+| `mysql` | `task-manager-mysql` | `3306` | MySQL 8 database |
+
+### Volumes
+
+| Volume | Purpose |
+|--------|---------|
+| `mysql-data` | Persistent MySQL data |
+| `app-logs` | Application log files |
+
+### Health Checks
+
+- **App** — polls `GET /health` every 30s
+- **MySQL** — `mysqladmin ping` every 10s
+
+Both services use `restart: unless-stopped`.
+
+> **Note:** MySQL is provisioned for future database integration. The application still uses in-memory storage and does not connect to MySQL yet.
+
+## Running Containers
+
+```bash
+# Build and start in detached mode
+docker compose up -d --build
+
+# Check container status
+docker compose ps
+
+# Follow application logs
+docker compose logs -f app
+
+# Restart a service
+docker compose restart app
+
+# Stop and remove containers (volumes preserved)
+docker compose down
+
+# Stop and remove containers + volumes
+docker compose down -v
+```
+
+## GitHub Actions
+
+CI runs automatically on **push** and **pull_request** to `main` via `.github/workflows/node.yml`.
+
+**Pipeline steps:**
+
+1. Checkout code
+2. Setup Node.js 20
+3. Install dependencies (`npm ci`)
+4. Run ESLint (`npm run lint`)
+5. Run Jest tests (`npm test`)
+6. Build application (`npm run build`)
+7. Build Docker image
 
 ## Security
 
@@ -303,9 +416,14 @@ Authorization: Bearer <token>
 |---------|-------------|
 | `npm run dev` | Start development server with nodemon |
 | `npm start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run build` | Validate application entry files |
 | `npm test` | Run all tests |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:coverage` | Run tests with coverage report |
+| `npm run docker:up` | Build and start Docker containers |
+| `npm run docker:down` | Stop Docker containers |
+| `npm run docker:logs` | Follow application container logs |
 
 ## Architecture
 
@@ -321,11 +439,9 @@ Request → Route → Middleware → Controller → Service → Repository
 
 ## Future Improvements
 
-- MySQL (or PostgreSQL) database integration
+- MySQL database integration (wire repositories to Docker MySQL)
 - Refresh token support
 - Password reset / forgot password flow
-- CI/CD pipeline with GitHub Actions
-- Docker containerization
 - Redis caching for sessions
 
 ## License
